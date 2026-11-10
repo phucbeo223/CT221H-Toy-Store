@@ -39,10 +39,10 @@ const localBindingConfig = {
 
 export default defineConfig(async ({ command }) => {
   configureToolEnvironment(process.cwd());
-  const workerRuntime = managedLinux || command === "build";
+  const workerRuntime = process.env.TOYJOY_RUNTIME !== "node" && (managedLinux || command === "build");
 
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
-  const { cloudflare } = await import("@cloudflare/vite-plugin");
+  const cloudflare = workerRuntime ? (await import("@cloudflare/vite-plugin")).cloudflare : undefined;
 
   return {
     server: {
@@ -67,7 +67,7 @@ export default defineConfig(async ({ command }) => {
     plugins: [
       vinext(),
       sites({ mockAuth: !managedLinux }),
-      ...(workerRuntime ? [connectorPreview(), cloudflare({
+      ...(cloudflare ? [connectorPreview(), cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
         config: {

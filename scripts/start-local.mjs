@@ -4,8 +4,9 @@ import {loadEnvFile} from 'node:process';
 import {fileURLToPath} from 'node:url';
 import pg from 'pg';
 process.chdir(fileURLToPath(new URL('../',import.meta.url)));
-if(!existsSync('.env'))throw new Error('Chạy npm run db:setup trước, hoặc tạo .env theo .env.example.');
-loadEnvFile('.env');
+const envArgs=existsSync('.env')?['--env-file=.env']:[];
+if(envArgs.length)loadEnvFile('.env');
+else if(!process.env.DATABASE_URL&&!process.env.PGHOST)throw new Error('Chạy npm run db:setup trước, hoặc tạo .env theo .env.example.');
 const production=process.argv.includes('--production');
 const children=[];
 let stopping=false;
@@ -25,8 +26,8 @@ async function checkDatabase(){
 try{
   console.log('Toyjoy: đang kiểm tra PostgreSQL...');
   try{await checkDatabase();}catch(e){
-    const url=new URL(process.env.DATABASE_URL);
-    const isOwnedLocal=url.hostname==='127.0.0.1'&&url.port==='5433'&&url.pathname==='/toyjoy'&&existsSync('.local/pgdata/PG_VERSION');
+    const url=process.env.DATABASE_URL?new URL(process.env.DATABASE_URL):null;
+    const isOwnedLocal=url?.hostname==='127.0.0.1'&&url.port==='5433'&&url.pathname==='/toyjoy'&&existsSync('.local/pgdata/PG_VERSION');
     if(e.code!=='ECONNREFUSED'||!isOwnedLocal)throw e;
     console.log('Đang khởi động PostgreSQL cục bộ của Toyjoy...');
     const setup=spawnSync(process.execPath,['scripts/setup-db.mjs'],{stdio:'inherit'});
@@ -34,7 +35,7 @@ try{
     await checkDatabase();
   }
   if(!stopping){
-    launch([...(!production?['--watch']:[]),'--env-file=.env','server/index.mjs'],'API');
+    launch([...(!production?['--watch']:[]),...envArgs,'server/index.mjs'],'API');
     // Only expose the UI once both the API and its database are ready.
     const origin=process.env.API_ORIGIN||`http://127.0.0.1:${process.env.PORT||3001}`;
     const deadline=Date.now()+20000;let ready=false;
@@ -43,6 +44,6 @@ try{
       await new Promise(resolve=>setTimeout(resolve,250));
     }
     if(!stopping&&!ready)throw new Error('API chưa sẵn sàng sau 20 giây. Xem lỗi API phía trên.');
-    if(!stopping){console.log('PostgreSQL và API đã sẵn sàng. Đang mở giao diện...');launch(production?['--env-file=.env','node_modules/vinext/dist/cli.js','start','--port',process.env.FRONTEND_PORT||'5173']:['scripts/run-framework.mjs','dev'],'Giao diện');}
+    if(!stopping){console.log('PostgreSQL và API đã sẵn sàng. Đang mở giao diện...');launch(production?[...envArgs,'node_modules/vinext/dist/cli.js','start','--port',process.env.FRONTEND_PORT||'5173']:['scripts/run-framework.mjs','dev'],'Giao diện');}
   }
 }catch(e){console.error(`Toyjoy không thể khởi động: ${e.message}`);process.exitCode=1;stop();}

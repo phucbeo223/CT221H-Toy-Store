@@ -2,6 +2,31 @@
 
 Website tiếng Việt cho đồ án CSDL: giao diện React/Vinext, API Node.js/Express, PostgreSQL 18 và tích hợp Gemini Embedding API qua key cấu hình trong `.env`.
 
+## Chạy bằng Docker trên máy mới (khuyên dùng)
+
+Chỉ cần cài và mở **Docker Desktop** ở chế độ Linux containers; không cần cài Node.js hoặc PostgreSQL trên máy. Tải/clone toàn bộ dự án, mở terminal trong thư mục `toyjoy` có `compose.yaml`, rồi chạy:
+
+```powershell
+docker compose up -d --build
+```
+
+Mở **http://localhost:5173/** sau khi container `app` báo `healthy` trong `docker compose ps`. Lần đầu cần Internet để tải image và thư viện, build giao diện nên sẽ lâu hơn. Không cần tạo `.env` cho phần cửa hàng, đăng nhập, đặt hàng và quản trị.
+
+Docker tự chạy PostgreSQL, áp dụng SQL, tạo tài khoản demo và 120 đơn lịch sử giả lập, nhập 64 sản phẩm cùng ảnh có sẵn rồi chạy giao diện/API bản production. Database được giữ trong volume `toyjoy_data`; khởi động lại không seed đè dữ liệu hay nhập lại danh mục đã có. Database Docker là bộ dữ liệu riêng, không tự sao chép đơn hàng, tin nhắn hay embedding từ PostgreSQL đang chạy trên máy tác giả. API và PostgreSQL chỉ kết nối nội bộ; cổng web được mở trên loopback của máy.
+
+```powershell
+docker compose ps           # Kiểm tra trạng thái
+docker compose logs -f app  # Xem tiến trình khởi tạo hoặc lỗi
+docker compose down         # Tắt, giữ dữ liệu
+docker compose up -d         # Bật lại sau khi đã build
+```
+
+Chỉ khi muốn **xóa toàn bộ dữ liệu Docker và tạo lại demo**, chạy `docker compose down -v`, sau đó `docker compose up -d`. Mật khẩu database mặc định là `toyjoy-local-demo`, dành cho demo cục bộ. Có thể đặt `POSTGRES_PASSWORD` trong `.env` trước lần chạy đầu; nếu volume đã tồn tại, thay biến này không tự đổi mật khẩu trong PostgreSQL.
+
+Để dùng chatbot/tìm kiếm AI, tạo `.env` chỉ với `GEMINI_API_KEY=khóa_của_bạn` (hoặc thêm dòng này vào `.env` đang có), chạy lại `docker compose up -d`, đăng nhập admin → **AI & phân tích → Đồng bộ embedding**. Key được truyền lúc chạy, không đóng gói vào image. Các biến `DATABASE_URL`, `PORT` và origin của chế độ Node cục bộ không được dùng để nối database Docker.
+
+Nếu cổng 5173 đã được dùng, đặt `DOCKER_PORT=5174` trong `.env`, chạy lại `docker compose up -d` và mở **http://localhost:5174/**. Khi chia sẻ source, gửi các file đã lưu trong Git; không gửi `.env`, `.local` hay `node_modules` của máy bạn.
+
 ## Chạy trên máy hiện tại
 
 Thư mục: `D:\CT221H_PROJECT\toyjoy`.
@@ -35,7 +60,7 @@ npm run start:local
 
 `db:setup` mặc định tìm PostgreSQL ở `C:\Program Files\PostgreSQL\18\bin`, tạo mật khẩu ngẫu nhiên trong `.env`, dùng xác thực SCRAM và chỉ nghe loopback. Nếu vị trí khác, đặt `$env:PG_BIN` tới thư mục `bin`. Tệp `.env`, thư mục `.local` và dữ liệu runtime đã được loại khỏi Git.
 
-Nếu dùng PostgreSQL có sẵn: sao chép `.env.example` thành `.env`, sửa `DATABASE_URL`, rồi chạy `db:migrate` và `db:seed`; bỏ qua `db:setup`. Nếu dùng Docker, đặt `POSTGRES_PASSWORD`, chạy `docker compose up -d`, cập nhật `DATABASE_URL` cho khớp mật khẩu rồi migrate/seed. Seed chỉ chạy trên catalog trống để giữ dữ liệu đang có.
+Nếu dùng PostgreSQL có sẵn: sao chép `.env.example` thành `.env`, sửa `DATABASE_URL`, rồi chạy `db:migrate` và `db:seed`; bỏ qua `db:setup`. Muốn chạy toàn bộ bằng Docker, làm theo phần Docker ở đầu tài liệu. Seed chỉ chạy trên catalog trống để giữ dữ liệu đang có.
 
 ## Tài khoản demo
 

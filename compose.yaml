@@ -1,17 +1,48 @@
 services:
+  app:
+    build: .
+    init: true
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: toyjoy
+      PGPASSWORD: ${POSTGRES_PASSWORD:-toyjoy-local-demo}
+      PGDATABASE: toyjoy
+      PORT: 3001
+      FRONTEND_PORT: 5173
+      APP_ORIGIN: http://localhost:${DOCKER_PORT:-5173}
+      API_ORIGIN: http://127.0.0.1:3001
+      COOKIE_SECURE: "false"
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_EMBEDDING_MODEL: ${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.5-flash}
+    ports:
+      - "127.0.0.1:${DOCKER_PORT:-5173}:5173"
+    healthcheck:
+      test: ["CMD", "node", "scripts/docker-healthcheck.mjs"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 6
+    stop_grace_period: 20s
   db:
     image: postgres:18-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: toyjoy
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Docker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toyjoy-local-demo}
       POSTGRES_DB: toyjoy
-    ports:
-      - "127.0.0.1:5433:5432"
     volumes:
       - toyjoy_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U toyjoy -d toyjoy"]
       interval: 5s
+      timeout: 5s
       retries: 10
 volumes:
   toyjoy_data:
